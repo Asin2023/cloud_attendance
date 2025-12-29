@@ -1,0 +1,8 @@
+FROM node:16
+WORKDIR /app
+COPY package.json .
+RUN npm install
+COPY . .
+# Render assigns a port automatically, usually 10000
+EXPOSE 10000 
+CMD ["node", "server.js"]
