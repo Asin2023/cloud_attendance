@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Attendance Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.05); }
+        #dashboard { display: none; }
+        .status-badge { width: 80px; display: inline-block; text-align: center; }
+    </style>
+</head>
+<body class="p-3">
+
+<div class="container" style="max-width: 900px;">
+    <div id="auth-section" class="row justify-content-center mt-5">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <h3 class="text-center mb-4" id="auth-title">Welcome Back</h3>
+                <input type="text" id="user" class="form-control mb-3" placeholder="Username">
+                <input type="password" id="pass" class="form-control mb-3" placeholder="Password">
+                <button onclick="handleAuth()" id="authBtn" class="btn btn-primary w-100">Login</button>
+                <button onclick="toggleAuth()" class="btn btn-link w-100 mt-2 text-decoration-none" id="toggleLink">Create an account</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-primary fw-bold">Attendance Dashboard</h2>
+            <button onclick="location.reload()" class="btn btn-outline-danger btn-sm">Sign Out</button>
+        </div>
+
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card p-4 mb-4">
+                    <h5>Add Student Record</h5>
+                    <input type="text" id="studentName" class="form-control mb-3" placeholder="Student Name">
+                    <div class="d-flex gap-2">
+                        <button onclick="mark('Present')" class="btn btn-success w-100">Present</button>
+                        <button onclick="mark('Absent')" class="btn btn-danger w-100">Absent</button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-7">
+                <div class="card p-4">
+                    <h5>Recent Records</h5>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="list"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // UPDATE THIS after deploying your backend to Render
+    const API = 'https://your-backend-url.onrender.com'; 
+    let isLogin = true;
+
+    function toggleAuth() {
+        isLogin = !isLogin;
+        document.getElementById('auth-title').innerText = isLogin ? "Welcome Back" : "Register Account";
+        document.getElementById('authBtn').innerText = isLogin ? "Login" : "Sign Up";
+        document.getElementById('toggleLink').innerText = isLogin ? "Create an account" : "Have an account? Login";
+    }
+
+    async function handleAuth() {
+        const username = document.getElementById('user').value;
+        const password = document.getElementById('pass').value;
+        const res = await fetch(`${API}${isLogin ? '/login' : '/register'}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username, password })
+        });
+        if (res.ok) {
+            if(!isLogin) { alert("Registered! Now Login."); toggleAuth(); }
+            else { 
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                loadRecords();
+            }
+        } else { alert("Auth Failed!"); }
+    }
+
+    async function mark(status) {
+        const name = document.getElementById('studentName').value;
+        if(!name) return;
+        await fetch(`${API}/mark`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ studentName: name, status })
+        });
+        document.getElementById('studentName').value = '';
+        loadRecords();
+    }
+
+    async function del(id) {
+        await fetch(`${API}/record/${id}`, { method: 'DELETE' });
+        loadRecords();
+    }
+
+    async function loadRecords() {
+        const res = await fetch(`${API}/records`);
+        const data = await res.json();
+        document.getElementById('list').innerHTML = data.map((r, i) => `
+            <tr>
+                <td>${i+1}</td>
+                <td><strong>${r.studentName}</strong></td>
+                <td><span class="badge ${r.status==='Present'?'bg-success':'bg-danger'} status-badge">${r.status}</span></td>
+                <td><button onclick="del('${r._id}')" class="btn btn-sm btn-link text-danger p-0">Delete</button></td>
+            </tr>
+        `).join('');
+    }
+</script>
+</body>
+</html>
